@@ -6,4 +6,4 @@ Under development
 
 ## Sneak Peak!
 
-![alt text](demo.jpg)
+![alt text](demo.JPG)
