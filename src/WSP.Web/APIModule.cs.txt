@@ -1,0 +1,617 @@
+﻿using Nancy;
+using System.IO;
+using Newtonsoft.Json;
+using TickerQ.Types;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Globalization;
+using TickerQ.Types.Udp;
+using MiscUtil.IO;
+using Nancy.Responses;
+using TickerQ.Data;
+using System.Threading.Tasks;
+using CsvHelper;
+using System.Net;
+using System.Runtime.Serialization.Json;
+using TickerQ.Client;
+using Puma.Types;
+using Nancy.RapidCache.Extensions;
+
+namespace TickerQ.Admin
+{
+    public class APIModule : NancyModule
+    {
+        public APIModule()
+        {
+            Get["/api/stopticker"] = parameters =>
+            {
+                WSClient.Instance.Close();
+                return Response.AsText("Done");
+            };
+
+            Get["/api/startticker"] = parameters =>
+            {
+                WSClient.Instance.Listen();
+                return Response.AsText("Done");
+            };
+
+            Get["/api/importfo"] = parameters =>
+            {
+                string prevDay = Request.Query["prevDay"];
+                var client = new TimeoutWebClient();
+                var url = "http://51.15.246.210/ivscr/fo/" + (!string.IsNullOrEmpty(prevDay) ? prevDay : "");
+
+                try
+                {
+                    var response = client.DownloadString(url);
+                    var fo = JsonConvert.DeserializeObject<List<FOInfo>>(response);
+                    if (fo != null && fo.Any())
+                    {
+                        //var tokensFile = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\Tokens.txt";
+                        //System.IO.File.WriteAllLines(tokensFile, tokens.Select(x => x.instrument_token.ToString()).ToArray());
+
+                        //save to DB
+                        new DataHelper().SaveFO(fo);
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Response.AsText(ex.Message);
+                }
+                return Response.AsText("Done");
+            };
+
+            Get["/api/importfut"] = parameters =>
+            {
+                string prevDay = Request.Query["prevDay"];
+                var client = new TimeoutWebClient();
+                var url = "http://51.15.246.210/pulse/fut/" + (!string.IsNullOrEmpty(prevDay) ? prevDay : "");
+
+                try
+                {
+                    var response = client.DownloadString(url);
+                    var fo = JsonConvert.DeserializeObject<List<FOInfo>>(response);
+                    if (fo != null && fo.Any())
+                    {
+                        //var tokensFile = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\Tokens.txt";
+                        //System.IO.File.WriteAllLines(tokensFile, tokens.Select(x => x.instrument_token.ToString()).ToArray());
+
+                        new Data.DataHelper().DeleteFO();
+
+                        //save to DB
+                        new DataHelper().SaveFO(fo);
+
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Response.AsText(ex.Message);
+                }
+                return Response.AsText("Done");
+            };
+            Get["/api/zohlc"] = parameters =>
+            {
+                string day = Request.Query["day"];
+                string pday = Request.Query["pday"];
+                string interval = Request.Query["interval"];
+
+                var result = new List<FOOHLC>();
+
+                //var tokensFile = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\AllTokens.txt";
+                //var tokens = System.IO.File.ReadAllLines(tokensFile);
+
+                var tokens = new DataHelper().GetTokens(pday);
+
+                var client = new WebClient();
+                foreach (var item in tokens)
+                {
+                    var url = "https://kitecharts-aws.zerodha.com/api/chart/" + item.instrument_token + "/" + interval + "minute?public_token=vRHPdC6J1NrN30OErdwE4LRBui2GHuou&user_id=&api_key=kitefront&access_token=vRHPdC6J1NrN30OErdwE4LRBui2GHuou&from=" + day + "&to=" + day + "&ciqrandom=vRHPdC6J1NrN30OErdwE4LRBui2GHuou";
+                    try
+                    {
+                        var response = client.DownloadString(url);
+                        var z = JsonConvert.DeserializeObject<ZeroInfo>(response);
+                        result.Add(new FOOHLC() { Token = item.instrument_token, Zero = z });
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Add(new FOOHLC() { Token = item.instrument_token, Zero = null });
+                    }
+                }
+
+                var res = JsonConvert.SerializeObject(result);
+
+                return Response.AsText(res);
+            };
+
+            Get["/api/n50ohlc"] = parameters =>
+            {
+                string tokensStr = Request.Query["tokens"];
+                string day = Request.Query["day"];
+                string interval = Request.Query["interval"];
+
+                interval = interval == "1" ? "" : interval;
+
+                var result = new List<FOOHLC>();
+
+                //var tokensFile = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\AllTokens.txt";
+                //var tokens = System.IO.File.ReadAllLines(tokensFile);
+
+                var tokens = tokensStr.Split(',');
+
+                var client = new WebClient();
+                foreach (var item in tokens)
+                {
+                    var url = "https://kitecharts-aws.zerodha.com/api/chart/" + item + "/" + interval + "minute?public_token=vRHPdC6J1NrN30OErdwE4LRBui2GHuou&user_id=&api_key=kitefront&access_token=vRHPdC6J1NrN30OErdwE4LRBui2GHuou&from=" + day + "&to=" + day + "&ciqrandom=vRHPdC6J1NrN30OErdwE4LRBui2GHuou";
+                    try
+                    {
+                        var response = client.DownloadString(url);
+                        var z = JsonConvert.DeserializeObject<ZeroInfo>(response);
+                        result.Add(new FOOHLC() { Token = int.Parse(item), Zero = z });
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Add(new FOOHLC() { Token = int.Parse(item), Zero = null });
+                    }
+                }
+
+                var res = JsonConvert.SerializeObject(result);
+
+                return Response.AsText(res);
+            };
+            Get["/api/EOD"] = parameters =>
+            {
+                string tokenStr = Request.Query["token"];
+                string from = Request.Query["from"];
+                string to= Request.Query["to"];
+
+                var client = new WebClient();
+                var result = new FOOHLC();
+
+                var url = "https://kitecharts-aws.zerodha.com/api/chart/" + tokenStr + "/day?public_token=vRHPdC6J1NrN30OErdwE4LRBui2GHuou&user_id=&api_key=kitefront&access_token=vRHPdC6J1NrN30OErdwE4LRBui2GHuou&from=" + from + "&to=" + to + "&ciqrandom=vRHPdC6J1NrN30OErdwE4LRBui2GHuou";
+                try
+                {
+                    var response = client.DownloadString(url);
+                    var z = JsonConvert.DeserializeObject<ZeroInfo>(response);
+                    result = new FOOHLC() { Token = int.Parse(tokenStr), Zero = z };
+                }
+                catch (Exception ex)
+                {
+                    result = new FOOHLC() { Token = int.Parse(tokenStr), Zero = null };
+                }
+
+                var res = JsonConvert.SerializeObject(result);
+
+                return Response.AsText(res);
+            };
+            Get["/api/oi"] = parameters =>
+            {
+                string day = Request.Query["day"];
+                string endTime = Request.Query["endtime"];
+                var dt = new DataHelper().GetOIData(day, endTime);
+                var result = JsonConvert.SerializeObject(dt);
+
+                return Response.AsText(result);
+            };
+
+            Get["/api/oifromnse"] = parameters =>
+            {
+                string day = Request.Query["day"];
+                string endTime = Request.Query["endtime"];
+                var dt = new DataHelper().GetOIData(day, endTime);
+                var result = JsonConvert.SerializeObject(dt);
+
+                return Response.AsText(result);
+            };
+            Get["/api/futoi"] = parameters =>
+            {
+                string day = Request.Query["day"];
+                string endTime = Request.Query["endtime"];
+                string interval = Request.Query["interval"];
+                var dt = new DataHelper().GetFUTOIData(day, endTime, interval);
+                var result = JsonConvert.SerializeObject(dt);
+
+                return Response.AsText(result);
+            };
+
+
+            Get["/api/iday"] = parameters =>
+            {
+                string day = Request.Query["day"];
+
+                var dt = new DataHelper().GetIntradayPair(day);
+                var result = JsonConvert.SerializeObject(dt);
+
+                return Response.AsText(result);
+            };
+            Get["/api/ohlc"] = parameters =>
+            {
+                string day = Request.Query["day"];
+                string token = Request.Query["token"];
+                string interval = Request.Query["interval"];
+
+                var dt = new DataHelper().GetOHLC(day, token, interval);
+                var result = JsonConvert.SerializeObject(dt);
+
+                return Response.AsText(result);
+            };
+            Get["/api/stats"] = parameters =>
+            {
+                //StatsCounter.Instance.MessagesReceived++;
+                string date = Request.Query["date"];
+                string stats = JsonConvert.SerializeObject(StatsCounter.Instance);
+
+                if (!string.IsNullOrEmpty(date) && date != "undefined")
+                {
+                    var entries = StatsCounter.Instance.GetStatsByDate(DateTime.ParseExact(date, "MM/dd/yyyy", CultureInfo.InvariantCulture));
+                    if (entries != null)
+                        stats = JsonConvert.SerializeObject(entries);
+                }
+
+
+                return Response.AsText(stats);
+            };
+            Get["/api/dbstats"] = parameters =>
+            {
+                string date = Request.Query["date"];
+
+                var summary = new TickerQSummary();
+                string stats = JsonConvert.SerializeObject(summary);
+                var db = new DataHelper();
+
+                if (!string.IsNullOrEmpty(date) && date != "undefined")
+                {
+                    var dt = DateTime.ParseExact(date, "MM/dd/yyyy", CultureInfo.InvariantCulture);
+
+                    var entries = StatsCounter.Instance.GetStatsByDate(dt);
+
+                    if (entries == null)
+                    {
+                        if (Configuration.Instance.TransmissionServer == "Primary")
+                        {
+                            summary.PrimaryTransmissionCount = StatsCounter.Instance.MessagesWrittenToDB;
+                            summary.SecondaryTransmissionCount = GetStats(dt, false);
+                        }
+                        else if (Configuration.Instance.TransmissionServer == "Secondary")
+                        {
+                            summary.PrimaryTransmissionCount = GetStats(dt, true);
+                            summary.SecondaryTransmissionCount = StatsCounter.Instance.MessagesWrittenToDB;
+
+                        }
+                    }
+                    else
+                    {
+                        if (Configuration.Instance.TransmissionServer == "Primary")
+                        {
+                            summary.PrimaryTransmissionCount = entries == null ? 0 : entries.MessagesWrittenToDB;
+                            summary.SecondaryTransmissionCount = GetStats(dt, false);
+                        }
+                        else if (Configuration.Instance.TransmissionServer == "Secondary")
+                        {
+                            summary.PrimaryTransmissionCount = GetStats(dt, true);
+                            summary.SecondaryTransmissionCount = entries == null ? 0 : entries.MessagesWrittenToDB;
+                        }
+
+                    }
+                    //var dbSummary = db.GetiPreTransmissionStats(dt);
+
+                    //if (dbSummary != null)
+                    //{
+                    //    summary.PrimaryRawTableCount = dbSummary.PrimaryRawTableCount;
+                    //    summary.SecondaryRawTableCount = dbSummary.SecondaryRawTableCount;
+                    //    summary.Avg7Days = dbSummary.Avg7Days;
+                    //    summary.DBConsolidatedCount = dbSummary.DBConsolidatedCount;
+                    //}
+
+                    summary.ReplayState = StatsCounter.Instance.ReplayState.ToString();
+
+                    stats = JsonConvert.SerializeObject(summary);
+
+                }
+
+                return Response.AsText(stats);
+            };
+            Get["/api/stats/reset"] = parameters =>
+            {
+                StatsCounter.Instance.Reset();
+                return Response.AsText("Statistics Cleared!");
+            };
+            Get["/api/validateresend"] = parameters =>
+            {
+                string password = Request.Query["password"];
+
+                if (string.IsNullOrEmpty(password))
+                    return Response.AsText("false");
+
+                if (Configuration.Instance.ResendPassword == password)
+                {
+                    return Response.AsText("true");
+                }
+                else
+                {
+                    return Response.AsText("false");
+                }
+
+            };
+            Get["/api/resend"] = parameters =>
+            {
+                string date = Request.Query["date"];
+
+                if (string.IsNullOrEmpty(date))
+                    date = DateTime.Today.ToString("yyyyMMdd");
+                else
+                    date = DateTime.ParseExact(date, "MM/dd/yyyy", CultureInfo.InvariantCulture).ToString("yyyyMMdd");
+
+                if (!Configuration.Instance.IsResendRunning && !string.IsNullOrEmpty(date))
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        ResendMessages(date);
+                    });
+                    return Response.AsText("Resend process started.");
+                }
+                else
+                {
+                    return Response.AsText("Previous instance of resend process is in-progress. Cannot start new one.");
+                }
+
+            };
+            Get["/api/resendforsync"] = parameters =>
+            {
+                string date = Request.Query["date"];
+
+                if (string.IsNullOrEmpty(date))
+                    date = DateTime.Today.ToString("yyyyMMdd");
+                else
+                    date = DateTime.ParseExact(date, "MM/dd/yyyy", CultureInfo.InvariantCulture).ToString("yyyyMMdd");
+
+                if (!Configuration.Instance.IsResendRunning && !string.IsNullOrEmpty(date))
+                {
+                    Task.Factory.StartNew(() =>
+                    {
+                        new ReplaySyncHelper().PerformReplay(date);
+                    });
+                    return Response.AsText("Resend process started.");
+                }
+                else
+                {
+                    return Response.AsText("Previous instance of resend process is in-progress. Cannot start new one.");
+                }
+
+            };
+            Get["/api/replaystatus"] = parameters =>
+            {
+                return Response.AsText(StatsCounter.Instance.ReplayState.ToString());
+            };
+            Get["/api/logs"] = parameters =>
+            {
+                var dataDate = DateTime.Today;
+                var logFileName = dataDate.ToString("yyyyMMdd") + ".txt";
+                var dir = System.AppDomain.CurrentDomain.BaseDirectory + "logs";
+                string logContent = string.Empty;
+
+                var logEntries = new List<Log4NetEntry>();
+                var response = new Response();
+                if (!File.Exists(dir + @"\" + logFileName))
+                {
+                    return Response.AsText(JsonConvert.SerializeObject(logEntries));
+
+                }
+
+                using (FileStream fileStream = new FileStream(dir + @"\" + logFileName, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    StreamReader streamReader = new StreamReader(fileStream);
+                    logContent = streamReader.ReadToEnd();
+                }
+
+
+                foreach (var item in logContent.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var parts = item.Split('|');
+                    if (parts.Length > 0 && parts.Length == 6)
+                    {
+                        logEntries.Add(new Log4NetEntry()
+                        {
+                            Date = parts[0],
+                            Level = parts[1],
+                            Logger = parts[2],
+                            Component = parts[3],
+                            Message = parts[5],
+                        });
+                    }
+                }
+                return Response.AsText(JsonConvert.SerializeObject(logEntries));
+            };
+            Get["/api/messages"] = parameters =>
+            {
+                var dataDate = DateTime.Today;
+                var logFileName = dataDate.ToString("yyyyMMdd") + ".txt";
+                var dir = System.AppDomain.CurrentDomain.BaseDirectory + "messages";
+                string messageContent = string.Empty;
+
+                int offset = int.Parse(Request.Query["offset"]);
+                int limit = int.Parse(Request.Query["limit"]);
+
+                if (File.Exists(dir + @"\" + logFileName))
+                {
+                    using (FileStream fileStream = new FileStream(dir + @"\" + logFileName, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        StreamReader streamReader = new StreamReader(fileStream);
+                        messageContent = streamReader.ReadToEnd();
+                    }
+                }
+
+
+                var messages = new List<Message>();
+                foreach (var item in messageContent.Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    Message message = new Message();
+                    message.MessageBlock = item;
+                    message.Parse();
+
+                    messages.Add(message);
+                }
+                messages = messages.OrderByDescending(x => x.Header.DateTime).Take(1000).ToList();
+
+                return Response.AsText(JsonConvert.SerializeObject(messages));
+            };
+            Get["/api/commit"] = parameters =>
+            {
+                MessageQueue.Instance.Commit();
+                return Response.AsText("Commit Invoked");
+            };
+            Get["/api/download/logs"] = parameters =>
+            {
+                string date = Request.Query["date"];
+                if (string.IsNullOrEmpty(date))
+                {
+                    date = DateTime.Today.ToString("yyyyMMdd");
+                }
+                var logFile = date + ".txt";
+                var dir = System.AppDomain.CurrentDomain.BaseDirectory + "logs";
+
+
+                var response = new Response();
+                if (!File.Exists(dir + @"\" + logFile))
+                {
+                    return Response.AsText("File not found");
+
+                }
+                response.Headers.Add("Content-Disposition", "attachment; filename=" + logFile);
+                response.ContentType = "text/plain";
+                response.Contents = stream =>
+                {
+                    using (var writer = new StreamWriter(stream))
+                    {
+                        using (FileStream fileStream = new FileStream(dir + @"\" + logFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        {
+                            var sr = new StreamReader(fileStream);
+                            string line;
+                            while ((line = sr.ReadLine()) != null)
+                            {
+                                writer.WriteLine(sr.ReadLine());
+                            }
+                        }
+                    }
+                };
+
+                return response;
+            };
+
+            Get["/api/download/messages"] = parameters =>
+            {
+                string date = Request.Query["date"];
+                if (string.IsNullOrEmpty(date))
+                {
+                    date = DateTime.Today.ToString("yyyyMMdd");
+                }
+                var logFile = date + ".txt";
+                var dir = System.AppDomain.CurrentDomain.BaseDirectory + "messages";
+
+
+                var response = new Response();
+                if (!File.Exists(dir + @"\" + logFile))
+                {
+                    return Response.AsText("File not found");
+
+                }
+                response.Headers.Add("Content-Disposition", "attachment; filename=" + logFile);
+                response.ContentType = "text/plain";
+                response.Contents = stream =>
+                {
+                    using (var writer = new StreamWriter(stream))
+                    {
+                        using (FileStream fileStream = new FileStream(dir + @"\" + logFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        {
+                            var sr = new StreamReader(fileStream);
+                            string line;
+                            while ((line = sr.ReadLine()) != null)
+                            {
+                                writer.WriteLine(sr.ReadLine());
+                            }
+                        }
+                    }
+                };
+
+                return response;
+            };
+        }
+        public long GetStats(DateTime? date, bool isPrimary)
+        {
+            var client = new WebClient();
+            var dateStr = string.Empty;
+            if (date.HasValue)
+                dateStr = date.Value.ToString("MM/dd/yyyy");
+
+            var url = (isPrimary ? Configuration.Instance.TickerQPrimaryServer : Configuration.Instance.TickerQSecondaryServer.ToString()) + "/stats";
+
+            if (!string.IsNullOrEmpty(dateStr))
+                url += "?date=" + dateStr;
+
+            var response = client.DownloadString(url);
+
+            var stats = JsonConvert.DeserializeObject<StatsCounter>(response);
+            return stats.MessagesWrittenToDB;
+        }
+        private void ResendMessages(string date)
+        {
+            //StatsCounter.Instance.MessagesReceived = 0;
+            //StatsCounter.Instance.MessagesSentToDB = 0;
+            //StatsCounter.Instance.MessagesWrittenToDB = 0;
+
+            //var logFile = date + ".txt";
+            //var dir = System.AppDomain.CurrentDomain.BaseDirectory + "messages";
+
+            //if (!File.Exists(dir + @"\" + logFile))
+            //{
+            //    return;
+            //}
+
+            //long messageCounter = 0;
+            //using (FileStream fileStream = new FileStream(dir + @"\" + logFile, FileMode.Open, FileAccess.Read, FileShare.Read))
+            //{
+            //    var sr = new StreamReader(fileStream);
+            //    string line;
+            //    MessageQueue.Instance.ResetSequenceQueue();
+            //    Configuration.Instance.IsResendRunning = true;
+            //    while ((line = sr.ReadLine()) != null)
+            //    {
+            //        //Parse
+            //        Message message = new Message();
+            //        message.MessageBlock = line;
+            //        message.Parse();
+
+            //        if (!MessageQueue.Instance.ContainsSeq(message))
+            //        {
+            //            StatsCounter.Instance.MessagesReceived++;
+
+            //            //Add to Queue
+            //            MessageQueue.Instance.AddForResend(message);
+            //            StatsCounter.Instance.MessagesQueued++;
+            //        }
+
+            //        messageCounter++;
+
+            //        //pause for 3s... to ease DB load
+            //        if (messageCounter % Configuration.Instance.ResendQueueLimit == 0)
+            //        {
+            //            System.Threading.Thread.Sleep(3000);
+            //        }
+            //    }
+            //    Configuration.Instance.IsResendRunning = false;
+            //    MessageQueue.Instance.ResetSequenceQueue();
+        }
+
+    }
+    public class TimeoutWebClient : WebClient
+    {
+        protected override WebRequest GetWebRequest(Uri address)
+        {
+            HttpWebRequest request = (HttpWebRequest)base.GetWebRequest(address);
+            request.Timeout = 60000 * 10; //10 minute timeout
+            return request;
+        }
+    }
+}

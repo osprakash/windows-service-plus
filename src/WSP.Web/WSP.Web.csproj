@@ -1,11 +1,68 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="APIModule.cs.txt" />
+    <None Remove="Web\buttons.html" />
+    <None Remove="Web\cards.html" />
+    <None Remove="Web\charts-flot.html" />
+    <None Remove="Web\charts-morris.html" />
+    <None Remove="Web\error-404-alt.html" />
+    <None Remove="Web\error-404.html" />
+    <None Remove="Web\error-500-alt.html" />
+    <None Remove="Web\error-500.html" />
+    <None Remove="Web\forms.html" />
+    <None Remove="Web\grid.html" />
+    <None Remove="Web\icons.html" />
+    <None Remove="Web\index.html" />
+    <None Remove="Web\item-editor.html" />
+    <None Remove="Web\items-list.html" />
+    <None Remove="Web\login.html" />
+    <None Remove="Web\reset.html" />
+    <None Remove="Web\responsive-tables.html" />
+    <None Remove="Web\screenful.html" />
+    <None Remove="Web\signup.html" />
+    <None Remove="Web\static-tables.html" />
+    <None Remove="Web\typography.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.2" />
     <PackageReference Include="Nancy" Version="2.0.0" />
+    <PackageReference Include="Nancy.Hosting.Self" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WSP.Utils\WSP.Utils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Web\buttons.html" />
+    <Content Include="Web\cards.html" />
+    <Content Include="Web\charts-flot.html" />
+    <Content Include="Web\charts-morris.html" />
+    <Content Include="Web\error-404-alt.html" />
+    <Content Include="Web\error-404.html" />
+    <Content Include="Web\error-500-alt.html" />
+    <Content Include="Web\error-500.html" />
+    <Content Include="Web\forms.html" />
+    <Content Include="Web\grid.html" />
+    <Content Include="Web\icons.html" />
+    <Content Include="Web\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Web\item-editor.html" />
+    <Content Include="Web\items-list.html" />
+    <Content Include="Web\login.html" />
+    <Content Include="Web\reset.html" />
+    <Content Include="Web\responsive-tables.html" />
+    <Content Include="Web\screenful.html" />
+    <Content Include="Web\signup.html" />
+    <Content Include="Web\static-tables.html" />
+    <Content Include="Web\typography.html" />
   </ItemGroup>
 
 </Project>
