@@ -5,13 +5,13 @@ Windows service plus - A boilerplate project for creating .NET windows service w
 Under development
 
 ## Features Planned
-⋅⋅* Service Dashboard
-⋅⋅* REST API
-⋅⋅* Health Check API & Dashboard
-⋅⋅* Jobs scheduler
-⋅⋅* Log Viewer
-⋅⋅* Email Triggers
-⋅⋅* Batch files for install/start/stop
+* Service Dashboard
+* REST API
+* Health Check API & Dashboard
+* Jobs scheduler
+* Log Viewer
+* Email Triggers
+* Batch files for install/start/stop
 
 
 ## Sneak Peak!
