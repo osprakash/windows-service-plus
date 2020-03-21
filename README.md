@@ -14,6 +14,6 @@ Under development
 * Batch files for install/start/stop
 
 
-## Sneak Peak!
+## Sneak Peek!
 
 ![alt text](demo.JPG)
