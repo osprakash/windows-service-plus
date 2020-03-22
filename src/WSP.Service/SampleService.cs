@@ -8,6 +8,8 @@ using WSP.Admin;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using WSP.Service.SampleProcess;
+using WSP.Messaging;
 
 namespace WSP.Service
 {
@@ -24,27 +26,31 @@ namespace WSP.Service
         
         public bool Start(HostControl hostControl)
         {
-            logger.Info("Starting Web/API monitoring server...");
+            logger.Info("Starting Web/API servers...");
             webServer.Start();
 
-            //logger.Info("Starting iPre Websocket listener");
-            //WSClient.Instance.Listen();
+            //Sample - simulate random document jobs and queue
+            //new RandomJobs().CreateAndQueue();
+
+            //RabbitMQ - Listener/Consumer
+            new SampleMessageListener().Listen();
+
+            //Sample - Report Generator
+            ReportProcess.Instance.Run();
 
             return true;
         }
 
         public bool Stop(HostControl hostControl)
         {
-            logger.Info("Stopping Web/API monitoring server...");
+            logger.Info("Stopping Web/API server...");
             webServer.Stop();
 
-            logger.Info("Stopping iPre");
-            //WSClient.Instance.Close();
 
             return true;
         }
 
-         public void Dispose()
+        public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);

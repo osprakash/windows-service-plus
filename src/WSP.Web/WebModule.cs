@@ -11,14 +11,11 @@ namespace TickerQ.Admin
     {
         public WebModule()
         {
-            //Get["/"] = parameters =>
-            //{
-            //    var feeds = new string[] { "foo", "bar" };
-            //    return Response.AsJson(feeds);
-            //};
-            //Get("/", args => "Hello World");
-            
-            Get("/", args => View["index", GlobalConfiguration.Instance.WebSiteVirtualPath]);
+            Get("/", args => View["index"]);
+            Get("/index", args => View["index"]);
+            Get("/logs", args => View["logs"]);
+            Get("/health", args => View["health"]);
+            Get("/theme", args => View["theme"]);
         }
     }
 }

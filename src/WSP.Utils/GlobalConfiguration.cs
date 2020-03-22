@@ -19,5 +19,6 @@ namespace WSP.Utils
         }
 
         public string WebSiteVirtualPath { get; set; }
+
     }
 }

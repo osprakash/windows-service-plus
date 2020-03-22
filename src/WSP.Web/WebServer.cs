@@ -21,14 +21,9 @@ namespace WSP.Admin
 
         public void Start()
         {
-            var appName = _configuration["AppName"];
             var port = _configuration["WebSitePort"];
 
-            var virtualPath = "/"+ appName + "/";
-
-            GlobalConfiguration.Instance.WebSiteVirtualPath = virtualPath;
-
-            var url = "http://localhost:" + port + virtualPath;
+            var url = "http://localhost:" + port;
             //API / Web server
             m_nancyHost = new NancyHost(new Uri(url));
             m_nancyHost.Start();

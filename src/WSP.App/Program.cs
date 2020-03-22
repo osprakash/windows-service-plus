@@ -29,10 +29,6 @@ namespace WSP.App
             var config = LoadConfiguration();
             services.AddSingleton(config);
 
-            //services.AddTransient<ITestService, TestService>();
-            // IMPORTANT! Register our application entry point
-            //services.AddTransient<SampleService>();
-
             serviceProvider = services.BuildServiceProvider();
             return services;
         }

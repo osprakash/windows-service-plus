@@ -15,7 +15,7 @@ namespace TickerQ.Admin
             base.ConfigureConventions(nancyConventions);
 
             nancyConventions.ViewLocationConventions.Add(
-                (viewName, model, context) => string.Concat("Web/", viewName));
+                (viewName, model, context) => string.Concat("Web/views/", viewName));
 
             nancyConventions.StaticContentsConventions.Add(StaticContentConventionBuilder.AddDirectory("js", "Web/js"));
             nancyConventions.StaticContentsConventions.Add(StaticContentConventionBuilder.AddDirectory("assets", "Web/assets"));
@@ -29,5 +29,6 @@ namespace TickerQ.Admin
             /*enable lightningcache, vary by url params id,query,take and skip*/
             //this.EnableRapidCache(container.Resolve<IRouteResolver>(), ApplicationPipelines, new[] { "query", "form", "accept" }); 
         }
+
     }
 }
